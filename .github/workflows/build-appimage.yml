@@ -146,12 +146,6 @@ jobs:
           elif [ -f antigravity.svg ]; then
             echo "Found local antigravity.svg in repository root. Copying to AppDir..."
             cp antigravity.svg Antigravity.AppDir/antigravity.svg
-          elif [ -f antigravity.jpg ]; then
-            echo "Found local antigravity.jpg in repository root. Copying to AppDir..."
-            cp antigravity.jpg Antigravity.AppDir/antigravity.jpg
-          elif [ -f antigravity.jpeg ]; then
-            echo "Found local antigravity.jpeg in repository root. Copying to AppDir..."
-            cp antigravity.jpeg Antigravity.AppDir/antigravity.jpeg
           else
             echo "No local icon found in repository root. Creating custom SVG logo..."
             cat <<'EOF' > Antigravity.AppDir/antigravity.svg
