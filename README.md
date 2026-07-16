@@ -1,60 +1,32 @@
-# Antigravity 2 AppImage Builder
+# Google Antigravity 2 AppImage Builder
 
-This repository contains an automated GitHub Actions workflow to build and release portable AppImage versions of Google Antigravity 2 for Linux (x86_64).
+This repository contains an automated GitHub Actions workflow to build and release portable Linux AppImages for **Google Antigravity 2**.
 
-## Setup Instructions
+## 🚀 Features
 
-To push this workflow to your remote GitHub repository, open your terminal and follow these steps:
+- **Automated Daily Updates**: Checks for new releases on the Google Antigravity website every day. If a new version is found, it automatically builds and releases the AppImage.
+- **Portability**: Compiles the AppImage on `ubuntu-latest` for wide compatibility across modern Linux distributions.
 
-### 1. Navigate to the project directory
-```bash
-cd /home/teja/.gemini/antigravity/scratch/antigravity-appimage-builder
-```
+## 📦 How to Download and Run
 
-### 2. Initialize Git
-```bash
-git init
-```
+1. Go to the **Releases** tab of this repository.
+2. Download the latest `.AppImage` file.
+3. Make the file executable in your terminal:
+   ```bash
+   chmod +x Antigravity_2-*.AppImage
+   ```
+4. Run the application:
+   ```bash
+   ./Antigravity_2-*.AppImage
+   ```
 
-### 3. Stage the files
-```bash
-git add .
-```
+### ⚙️ Desktop Integration & Auto-Updates (Recommended)
 
-### 4. Create your first commit
-```bash
-git commit -m "Initial commit: Add AppImage build workflow"
-```
-
-### 5. Rename default branch to `main`
-```bash
-git branch -M main
-```
-
-### 6. Create a repository on GitHub
-1. Go to your GitHub dashboard and click **New Repository**.
-2. Name the repository (e.g. `antigravity-appimage-builder`).
-3. Keep it empty (do **not** initialize it with a README, gitignore, or license).
-4. Copy the remote URL (e.g. `git@github.com:YOUR_USERNAME/antigravity-appimage-builder.git` or `https://github.com/YOUR_USERNAME/antigravity-appimage-builder.git`).
-
-### 7. Link to the Remote Repository
-Replace `YOUR_REMOTE_URL` with the URL you copied:
-```bash
-git remote add origin YOUR_REMOTE_URL
-```
-
-### 8. Push to GitHub
-```bash
-git push -u origin main
-```
-
----
-
-## Triggering the Build
-
-Once pushed, you can run the builder in two ways:
-1. **Automatically (Scheduled)**: The workflow runs automatically every day at midnight to search the Google website for newer releases. If a new version exists, it will automatically package and release it.
-2. **Manually**: 
-   * Navigate to the **Actions** tab of your GitHub repository.
-   * Select the **Build Antigravity 2 AppImage** workflow.
-   * Click **Run workflow** and optionally provide a custom download URL or version tag override.
+To integrate the application into your system menus and enable automatic background updates:
+1. Install [Gear Lever](https://github.com/mijorus/gearlever) (available on Flathub).
+2. Open Gear Lever and drag-and-drop the downloaded `.AppImage` file to integrate it.
+3. In Gear Lever, configure the Update Source to **GitHub** and paste the following release URL:
+   ```text
+   https://github.com/PrudviTeja99/antigravity-appimage-builder/releases/download/v*/Antigravity_2-*-x86_64.AppImage
+   ```
+   *(Gear Lever will check this link in the background and automatically update your installation whenever a new version is published here).*
