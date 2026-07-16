@@ -139,8 +139,20 @@ jobs:
           Categories=Development;Utility;
           EOF
           
-          # 5. Generate a premium vector SVG icon for the launcher
-          cat <<'EOF' > Antigravity.AppDir/antigravity.svg
+          # 5. Extract the official logo from app.asar (if possible), otherwise fall back to our custom SVG
+          echo "Extracting app.asar to search for official logo..."
+          npx asar extract Antigravity.AppDir/resources/app.asar temp_extracted || echo "Failed to extract app.asar"
+          
+          # Search for files with 'logo' or 'icon' in their name
+          LOGO_PATH=$(find temp_extracted -type f \( -name "*logo*.png" -o -name "*icon*.png" -o -name "*logo*.svg" -o -name "*icon*.svg" \) | head -n1 || true)
+          
+          if [ -n "$LOGO_PATH" ]; then
+            EXT="${LOGO_PATH##*.}"
+            echo "Success! Found official logo at $LOGO_PATH (extension: $EXT). Copying..."
+            cp "$LOGO_PATH" "Antigravity.AppDir/antigravity.${EXT}"
+          else
+            echo "Official logo not found. Creating fallback custom SVG logo..."
+            cat <<'EOF' > Antigravity.AppDir/antigravity.svg
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
             <defs>
               <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -155,6 +167,10 @@ jobs:
             <path d="M190 450 Q256 430 322 450" fill="none" stroke="#22d3ee" stroke-width="8" stroke-linecap="round" />
           </svg>
           EOF
+          fi
+          
+          # Clean up the temporary extraction folder to keep AppImage size small
+          rm -rf temp_extracted
 
           # 6. Download appimagetool
           wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O appimagetool
