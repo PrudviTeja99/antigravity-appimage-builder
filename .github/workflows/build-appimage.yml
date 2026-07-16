@@ -18,8 +18,8 @@ permissions:
 
 jobs:
   check-and-build:
-    # Build on Ubuntu 20.04 to ensure backward compatibility with older GLIBC versions
-    runs-on: ubuntu-20.04
+    # Build on ubuntu-latest for maximum runner availability and instant startup
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout Repository
