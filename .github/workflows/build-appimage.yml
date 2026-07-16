@@ -1,0 +1,150 @@
+name: Build Antigravity 2 AppImage
+
+on:
+  workflow_dispatch:
+    inputs:
+      download_url:
+        description: 'Direct download URL (leave blank to auto-detect)'
+        required: false
+      version_override:
+        description: 'Override version tag (leave blank to auto-detect)'
+        required: false
+  schedule:
+    # Run daily at midnight to check for updates
+    - cron: '0 0 * * *'
+
+permissions:
+  contents: write # Required to create releases and upload assets
+
+jobs:
+  check-and-build:
+    # Build on Ubuntu 20.04 to ensure backward compatibility with older GLIBC versions
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget file desktop-file-utils binutils jq curl
+
+      - name: Resolve Download URL and Version
+        id: resolve_url
+        run: |
+          # 1. Determine download URL
+          if [ -n "${{ github.event.inputs.download_url }}" ]; then
+            DOWNLOAD_URL="${{ github.event.inputs.download_url }}"
+            echo "Using manual download URL: $DOWNLOAD_URL"
+          else
+            echo "Scraping latest download URL from website..."
+            PAGE_CONTENT=$(curl -sL "https://antigravity.google/download")
+            # Extract the Google Storage download URL matching the pattern
+            DOWNLOAD_URL=$(echo "$PAGE_CONTENT" | grep -oE 'https://storage.googleapis.com/antigravity-public/antigravity-hub/[0-9a-zA-Z.-]+/linux-x64/Antigravity.tar.gz' | head -n1)
+          fi
+
+          if [ -z "$DOWNLOAD_URL" ]; then
+            echo "Error: Could not find or parse the download URL."
+            exit 1
+          fi
+
+          # 2. Extract Version (e.g. 2.3.0-5214728084127744) from the URL
+          if [ -n "${{ github.event.inputs.version_override }}" ]; then
+            VERSION="${{ github.event.inputs.version_override }}"
+          else
+            # Field 6 split by '/' corresponds to the version folder in the GCS path
+            VERSION=$(echo "$DOWNLOAD_URL" | cut -d'/' -f6)
+          fi
+
+          if [ -z "$VERSION" ]; then
+            echo "Error: Could not determine version from URL."
+            exit 1
+          fi
+
+          echo "Target Version: $VERSION"
+          echo "DOWNLOAD_URL=$DOWNLOAD_URL" >> $GITHUB_ENV
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          
+          # 3. Check if release already exists in your repo
+          RELEASE_EXISTS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/v$VERSION" \
+            | jq -r '.tag_name')
+
+          if [ "$RELEASE_EXISTS" = "v$VERSION" ] && [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "Version v$VERSION has already been built and released. Skipping build."
+            echo "should_build=false" >> $GITHUB_OUTPUT
+          else
+            echo "Proceeding to build version v$VERSION."
+            echo "should_build=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build AppImage
+        if: steps.resolve_url.outputs.should_build == 'true'
+        run: |
+          # 1. Download the archive
+          wget -q "$DOWNLOAD_URL" -O Antigravity.tar.gz
+          
+          # 2. Extract files directly into AppDir (stripping the root Antigravity-x64 directory)
+          mkdir -p Antigravity.AppDir
+          tar -xzf Antigravity.tar.gz -C Antigravity.AppDir --strip-components=1
+          
+          # 3. Create the AppRun launcher script at the root
+          cat <<'EOF' > Antigravity.AppDir/AppRun
+          #!/bin/sh
+          HERE="$(dirname "$(readlink -f "${0}")")"
+          # Forward all parameters to the actual binary
+          exec "${HERE}/antigravity" "$@"
+          EOF
+          chmod +x Antigravity.AppDir/AppRun
+          
+          # 4. Create the .desktop metadata file
+          cat <<EOF > Antigravity.AppDir/antigravity.desktop
+          [Desktop Entry]
+          Name=Antigravity 2
+          Comment=Google Antigravity Desktop App
+          Exec=antigravity %U
+          Terminal=false
+          Type=Application
+          Icon=antigravity
+          Categories=Development;Utility;
+          EOF
+          
+          # 5. Generate a premium vector SVG icon for the launcher
+          cat <<'EOF' > Antigravity.AppDir/antigravity.svg
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+            <defs>
+              <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#4f46e5;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#9333ea;stop-opacity:1" />
+              </linearGradient>
+            </defs>
+            <rect width="512" height="512" rx="128" fill="url(#grad)" />
+            <path d="M256 90 L140 370 L200 370 L256 230 L312 370 L372 370 Z" fill="#ffffff" />
+            <circle cx="256" cy="150" r="30" fill="#22d3ee" />
+            <path d="M160 420 Q256 390 352 420" fill="none" stroke="#22d3ee" stroke-width="12" stroke-linecap="round" />
+            <path d="M190 450 Q256 430 322 450" fill="none" stroke="#22d3ee" stroke-width="8" stroke-linecap="round" />
+          </svg>
+          EOF
+
+          # 6. Download appimagetool
+          wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O appimagetool
+          chmod +x appimagetool
+          
+          # 7. Package the AppDir (exporting APPIMAGE_EXTRACT_AND_RUN bypasses FUSE runner requirements)
+          export APPIMAGE_EXTRACT_AND_RUN=1
+          ./appimagetool Antigravity.AppDir Antigravity_2-${VERSION}-x86_64.AppImage
+
+      - name: Create Release and Upload
+        if: steps.resolve_url.outputs.should_build == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "v${{ env.VERSION }}"
+          name: "Antigravity 2 v${{ env.VERSION }}"
+          body: |
+            Automated AppImage release for Google Antigravity 2.
+            
+            **Source Tarball:** ${{ env.DOWNLOAD_URL }}
+          draft: false
+          prerelease: false
+          files: "*.AppImage"
