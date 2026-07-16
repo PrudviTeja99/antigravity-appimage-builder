@@ -39,18 +39,40 @@ jobs:
             echo "Using manual download URL: $DOWNLOAD_URL"
           else
             echo "Scraping latest download URL from website..."
-            DOWNLOAD_URL=$(curl -sL --compressed \
+            # 1a. Fetch HTML page
+            HTML=$(curl -sL --compressed \
               -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
-              "https://antigravity.google/download" \
-              | grep -oE 'https://storage.googleapis.com/antigravity-public/antigravity-hub/[^/]+/linux-x64/Antigravity.tar.gz' \
-              | head -n1)
+              "https://antigravity.google/download")
+            
+            # 1b. Try to find the URL directly in HTML (as a fallback)
+            DOWNLOAD_URL=$(echo "$HTML" | grep -oE 'https://storage.googleapis.com/antigravity-public/antigravity-hub/[^/]+/linux-x64/Antigravity.tar.gz' | head -n1)
+
+            # 1c. If not found in static HTML (because it is an Angular SPA), search inside referenced JS bundles
+            if [ -z "$DOWNLOAD_URL" ]; then
+              echo "URL not found in static HTML. Scanning referenced JavaScript bundles..."
+              # Extract script files loaded in HTML (like main-*.js or chunk-*.js)
+              SCRIPTS=$(echo "$HTML" | grep -oE '[a-zA-Z0-9_-]+\.js' | sort -u)
+              
+              for script in $SCRIPTS; do
+                echo "Scanning bundle: https://antigravity.google/$script"
+                URL=$(curl -sL --compressed \
+                  -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" \
+                  "https://antigravity.google/$script" \
+                  | grep -oE 'https://storage.googleapis.com/antigravity-public/antigravity-hub/[^/"]+/linux-x64/Antigravity.tar.gz' \
+                  | head -n1)
+                
+                if [ -n "$URL" ]; then
+                  DOWNLOAD_URL="$URL"
+                  echo "Success! Found download link in $script"
+                  break
+                fi
+              done
+            fi
           fi
 
           if [ -z "$DOWNLOAD_URL" ]; then
             echo "=== DEBUG: Page Content (First 100 lines) ==="
-            curl -sL --compressed \
-              -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
-              "https://antigravity.google/download" | head -n 100
+            echo "$HTML" | head -n 100
             echo "============================================="
             echo "Error: Could not find or parse the download URL."
             exit 1
