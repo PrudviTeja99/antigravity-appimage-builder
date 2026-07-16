@@ -25,8 +25,14 @@ This repository contains an automated GitHub Actions workflow to build and relea
 To integrate the application into your system menus and enable automatic background updates:
 1. Install [Gear Lever](https://github.com/mijorus/gearlever) (available on Flathub).
 2. Open Gear Lever and drag-and-drop the downloaded `.AppImage` file to integrate it.
-3. In Gear Lever, configure the Update Source to **GitHub** and paste the following release URL:
-   ```text
-   https://github.com/PrudviTeja99/antigravity-appimage-builder/releases/download/v*/Antigravity_2-*-x86_64.AppImage
-   ```
-   *(Gear Lever will check this link in the background and automatically update your installation whenever a new version is published here).*
+3. In Gear Lever, click on **Antigravity 2** in your list, go to the **Update Management** section, and select **GitHub** as the update source.
+4. Fill in the fields exactly as follows:
+   - **Repository (owner/repo)**: 
+     ```text
+     PrudviTeja99/antigravity-appimage-builder
+     ```
+   - **Application file name** (or **Asset name**): 
+     ```text
+     Antigravity_2-*-x86_64.AppImage
+     ```
+     *(The asterisk `*` acts as a wildcard that allows Gear Lever to check and match future version releases).*
