@@ -139,19 +139,21 @@ jobs:
           Categories=Development;Utility;
           EOF
           
-          # 5. Extract the official logo from app.asar (if possible), otherwise fall back to our custom SVG
-          echo "Extracting app.asar to search for official logo..."
-          npx asar extract Antigravity.AppDir/resources/app.asar temp_extracted || echo "Failed to extract app.asar"
-          
-          # Search for files with 'logo' or 'icon' in their name
-          LOGO_PATH=$(find temp_extracted -type f \( -name "*logo*.png" -o -name "*icon*.png" -o -name "*logo*.svg" -o -name "*icon*.svg" \) | head -n1 || true)
-          
-          if [ -n "$LOGO_PATH" ]; then
-            EXT="${LOGO_PATH##*.}"
-            echo "Success! Found official logo at $LOGO_PATH (extension: $EXT). Copying..."
-            cp "$LOGO_PATH" "Antigravity.AppDir/antigravity.${EXT}"
+          # 5. Check if the user placed an icon in the repository root, otherwise fall back to our custom SVG
+          if [ -f antigravity.png ]; then
+            echo "Found local antigravity.png in repository root. Copying to AppDir..."
+            cp antigravity.png Antigravity.AppDir/antigravity.png
+          elif [ -f antigravity.svg ]; then
+            echo "Found local antigravity.svg in repository root. Copying to AppDir..."
+            cp antigravity.svg Antigravity.AppDir/antigravity.svg
+          elif [ -f antigravity.jpg ]; then
+            echo "Found local antigravity.jpg in repository root. Copying to AppDir..."
+            cp antigravity.jpg Antigravity.AppDir/antigravity.jpg
+          elif [ -f antigravity.jpeg ]; then
+            echo "Found local antigravity.jpeg in repository root. Copying to AppDir..."
+            cp antigravity.jpeg Antigravity.AppDir/antigravity.jpeg
           else
-            echo "Official logo not found. Creating fallback custom SVG logo..."
+            echo "No local icon found in repository root. Creating custom SVG logo..."
             cat <<'EOF' > Antigravity.AppDir/antigravity.svg
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
             <defs>
@@ -168,9 +170,6 @@ jobs:
           </svg>
           EOF
           fi
-          
-          # Clean up the temporary extraction folder to keep AppImage size small
-          rm -rf temp_extracted
 
           # 6. Download appimagetool
           wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O appimagetool
