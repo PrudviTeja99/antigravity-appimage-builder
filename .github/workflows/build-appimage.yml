@@ -39,12 +39,19 @@ jobs:
             echo "Using manual download URL: $DOWNLOAD_URL"
           else
             echo "Scraping latest download URL from website..."
-            PAGE_CONTENT=$(curl -sL "https://antigravity.google/download")
-            # Extract the Google Storage download URL matching the pattern
-            DOWNLOAD_URL=$(echo "$PAGE_CONTENT" | grep -oE 'https://storage.googleapis.com/antigravity-public/antigravity-hub/[0-9a-zA-Z.-]+/linux-x64/Antigravity.tar.gz' | head -n1)
+            DOWNLOAD_URL=$(curl -sL --compressed \
+              -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
+              "https://antigravity.google/download" \
+              | grep -oE 'https://storage.googleapis.com/antigravity-public/antigravity-hub/[^/]+/linux-x64/Antigravity.tar.gz' \
+              | head -n1)
           fi
 
           if [ -z "$DOWNLOAD_URL" ]; then
+            echo "=== DEBUG: Page Content (First 100 lines) ==="
+            curl -sL --compressed \
+              -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" \
+              "https://antigravity.google/download" | head -n 100
+            echo "============================================="
             echo "Error: Could not find or parse the download URL."
             exit 1
           fi
